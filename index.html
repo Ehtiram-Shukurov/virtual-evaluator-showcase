@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual Evaluator Realism and Stress in VR</title>
+<meta name="description" content="MS thesis, University of Minnesota. Does a more realistic virtual evaluator cause more stress in VR? A MetaHuman evaluator, a Rocketbox evaluator and no evaluator, with everything but appearance held the same.">
+<meta name="theme-color" content="#f4f5f7">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+/* Thesis page identity: light paper by default, dark on request.
+   Color carries meaning: amber = MetaHuman, blue = Rocketbox, gray = no evaluator. Everything else is ink. */
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --surface-2:#eef0f4; --img-bg:#e6e9ef;
+  --line:rgba(17,24,39,.10); --line-soft:rgba(17,24,39,.06); --line-strong:rgba(17,24,39,.22);
+  --heading:#0d1321; --text:#1f2937; --secondary:#3b4556; --muted:#667085;
+  --ink:#111827; --on-ink:#ffffff; --link:#1d4ed8;
+  --mh:#b45309; --mh-solid:#d97706; --mh-bg:#fdf3e4;
+  --rb:#1d4ed8; --rb-solid:#2563eb; --rb-bg:#e9f0ff;
+  --none:#667085; --none-bg:#eef0f4;
+  --ok:#16a34a; --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --font:'Atkinson Hyperlegible',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#16191f; --surface:#1e222a; --surface-2:#252a34; --img-bg:#0f1115;
+  --line:rgba(255,255,255,.09); --line-soft:rgba(255,255,255,.05); --line-strong:rgba(255,255,255,.2);
+  --heading:#f3f4f6; --text:#dde1e8; --secondary:#b9bfcb; --muted:#8f97a6;
+  --ink:#f3f4f6; --on-ink:#14171c; --link:#8db4ff;
+  --mh:#f3b25d; --mh-solid:#e89a2c; --mh-bg:rgba(243,178,93,.12);
+  --rb:#86aeff; --rb-solid:#4f7ff0; --rb-bg:rgba(134,174,255,.12);
+  --none:#9aa2b1; --none-bg:rgba(255,255,255,.06);
+  --ok:#4ade80; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font:1.0625rem/1.7 var(--font);transition:background .3s,color .3s}
+a{color:var(--link);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{text-decoration-thickness:2px}
+img{display:block;max-width:100%}
+
+/* thin header strip */
+.strip{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.strip-in{max-width:1280px;margin:0 auto;height:56px;padding:0 clamp(20px,3vw,40px);display:flex;align-items:center;gap:20px}
+.back{display:inline-flex;align-items:center;gap:8px;color:var(--heading);text-decoration:none;font-weight:700;font-size:.98rem}
+.back span{font-weight:400;color:var(--muted)}
+.back svg{width:18px;height:18px}
+.strip .spacer{flex:1}
+.strip a.plain{color:var(--secondary);text-decoration:none;font-size:.95rem}
+.strip a.plain:hover{color:var(--heading)}
+.theme-btn{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-strong);border-radius:999px;padding:6px 14px;color:var(--heading);font:700 .88rem var(--font);cursor:pointer}
+.theme-btn svg{width:16px;height:16px}
+
+/* layout: contents rail + reading column */
+.layout{max-width:1280px;margin:0 auto;padding:0 clamp(20px,3vw,40px);display:grid;grid-template-columns:210px minmax(0,1fr);gap:56px}
+.toc{position:sticky;top:88px;align-self:start;padding-top:64px}
+.toc p{font-size:.85rem;color:var(--muted);margin-bottom:12px}
+.toc ol{list-style:none;border-left:2px solid var(--line)}
+.toc a{display:block;padding:7px 0 7px 16px;margin-left:-2px;border-left:2px solid transparent;color:var(--secondary);text-decoration:none;font-size:.95rem;line-height:1.35}
+.toc a:hover{color:var(--heading)}
+.toc a.active{color:var(--heading);font-weight:700;border-left-color:var(--ink)}
+.page{min-width:0;padding:56px 0 40px}
+section{margin-top:104px;scroll-margin-top:80px}
+h2{font-family:var(--serif);font-weight:600;font-size:2.2rem;line-height:1.15;letter-spacing:-.01em;color:var(--heading);margin-bottom:12px}
+h3{font-size:1.12rem;color:var(--heading);margin-bottom:12px}
+.lead{color:var(--secondary);max-width:68ch;margin-bottom:32px;font-size:1.08rem}
+p{max-width:72ch}
+.muted{color:var(--muted)}
+
+/* hero */
+.hero .kicker{color:var(--muted);font-size:1rem;margin-bottom:10px}
+.hero h1{font-family:var(--serif);font-weight:600;font-size:clamp(2.4rem,5vw,4rem);line-height:1.06;letter-spacing:-.02em;color:var(--heading);max-width:18ch}
+.byline{margin-top:24px;display:flex;flex-direction:column;gap:2px}
+.byline .who{font-size:1.12rem;font-weight:700;color:var(--heading)}
+.byline .who span{font-weight:400;color:var(--muted)}
+.byline .where{color:var(--secondary)}
+.status{display:inline-flex;align-items:center;gap:10px;margin-top:20px;padding:6px 14px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--secondary);font-size:.92rem}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:6px;font-weight:700;font-size:.96rem;text-decoration:none;border:1px solid var(--line-strong);color:var(--heading);background:var(--surface);transition:border-color .2s,transform .2s}
+.btn:hover{border-color:var(--ink);transform:translateY(-1px)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--on-ink)}
+.btn.disabled{color:var(--muted);border-style:dashed;background:transparent;cursor:default}
+.btn.disabled:hover{transform:none;border-color:var(--line-strong)}
+.hero>*{animation:rise .7s cubic-bezier(.22,1,.36,1) both}
+.hero>*:nth-child(2){animation-delay:.07s}.hero>*:nth-child(3){animation-delay:.14s}.hero>*:nth-child(4){animation-delay:.21s}.hero>*:nth-child(5){animation-delay:.28s}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* teaser slider */
+.teaser{margin-top:48px;border-radius:14px;overflow:hidden;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);animation:rise .8s .35s cubic-bezier(.22,1,.36,1) both}
+.compare{position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--img-bg);user-select:none;-webkit-user-select:none}
+.compare img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.compare .top{clip-path:inset(0 calc(100% - var(--pos,50%)) 0 0)}
+.handle{position:absolute;top:0;bottom:0;left:var(--pos,50%);width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 16px rgba(0,0,0,.35);pointer-events:none}
+.handle span{position:absolute;top:50%;left:50%;width:46px;height:46px;transform:translate(-50%,-50%);display:grid;place-items:center;border-radius:50%;background:#fff;color:#111827;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.handle svg{width:22px;height:22px}
+.tag{position:absolute;padding:6px 14px;border-radius:999px;color:#fff;font-size:.92rem;font-weight:700;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.tag.mh{background:var(--mh-solid)}
+.tag.rb{background:var(--rb-solid)}
+.tag.l{top:18px;left:18px}.tag.r{top:18px;right:18px}
+.tag.hint{bottom:18px;left:50%;transform:translateX(-50%);font-weight:400;background:rgba(17,24,39,.72);transition:opacity .5s;white-space:nowrap}
+.compare.touched .hint{opacity:0}
+.compare input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;cursor:ew-resize;touch-action:pan-y}
+.compare:focus-within .handle span{outline:3px solid var(--ink);outline-offset:3px}
+.teaser figcaption{padding:14px 22px;color:var(--muted);font-size:.93rem;border-top:1px solid var(--line-soft)}
+
+/* overview */
+.overview{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:48px;align-items:start}
+.overview p+p{margin-top:16px}
+.overview p{color:var(--secondary)}
+.overview strong{color:var(--heading)}
+.facts{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 22px;box-shadow:var(--shadow)}
+.facts div{display:grid;grid-template-columns:110px 1fr;gap:14px;padding:12px 0;border-bottom:1px solid var(--line-soft)}
+.facts div:last-child{border-bottom:none}
+.facts dt{color:var(--muted);font-size:.95rem}
+.facts dd{color:var(--text)}
+
+/* cards */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 30px;box-shadow:var(--shadow)}
+.controls{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px}
+.panel.accent{background:linear-gradient(135deg,var(--mh-bg),var(--rb-bg))}
+.checks{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:12px 24px}
+.checks li{display:flex;gap:10px;align-items:flex-start;color:var(--text)}
+.checks svg{flex-shrink:0;width:20px;height:20px;margin-top:3px;color:var(--ok)}
+.changes{display:flex;flex-direction:column;gap:16px}
+.changes .big{font-family:var(--serif);font-size:1.5rem;font-weight:600;color:var(--heading);line-height:1.25}
+.changes .row{display:flex;gap:12px;align-items:center}
+.chip{display:inline-block;padding:4px 12px;border-radius:999px;font-size:.88rem;font-weight:700;border:1px solid transparent}
+.chip.mh{background:var(--mh-bg);color:var(--mh);border-color:color-mix(in srgb,var(--mh) 35%,transparent)}
+.chip.rb{background:var(--rb-bg);color:var(--rb);border-color:color-mix(in srgb,var(--rb) 35%,transparent)}
+.chip.none{background:var(--none-bg);color:var(--none);border-color:var(--line-strong)}
+.note{margin-top:4px;color:var(--muted);font-size:.95rem}
+
+/* design */
+.groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:36px}
+.group{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--none);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
+.group.mh{border-top-color:var(--mh-solid)}
+.group.rb{border-top-color:var(--rb-solid)}
+.group b{display:block;color:var(--heading);font-size:1.1rem;margin-bottom:4px}
+.group.mh b{color:var(--mh)}
+.group.rb b{color:var(--rb)}
+.group span{color:var(--muted);font-size:.95rem}
+.timeline-wrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px 28px;margin-bottom:36px;box-shadow:var(--shadow)}
+.tl{display:flex;height:52px;border-radius:8px;overflow:hidden;margin:14px 0}
+.tl div{display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;padding:0 6px}
+.tl .base{flex:3;background:var(--surface-2);color:var(--secondary)}
+.tl .q{flex:0 0 10px;background:var(--ink)}
+.tl .untimed{flex:3.2;background:color-mix(in srgb,var(--ink) 14%,var(--surface));color:var(--heading)}
+.tl .enter{flex:0 0 30px;background:linear-gradient(180deg,var(--mh-solid) 50%,var(--rb-solid) 50%)}
+.tl .timed{flex:8;background:color-mix(in srgb,var(--ink) 78%,var(--surface));color:var(--on-ink)}
+.tl .s{display:none}
+.legend{list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;color:var(--muted);font-size:.92rem}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+.legend .k-q{background:var(--ink)}
+.legend .k-enter{background:linear-gradient(180deg,var(--mh-solid) 50%,var(--rb-solid) 50%)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.two .panel p{color:var(--secondary)}
+table{width:100%;border-collapse:collapse;font-size:.98rem}
+th,td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{color:var(--muted);font-weight:700;font-size:.9rem;background:var(--surface-2)}
+tr:last-child td{border-bottom:none}
+td:first-child{color:var(--heading);font-weight:700;white-space:nowrap}
+td{color:var(--secondary)}
+.table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow-x:auto;margin-bottom:24px;box-shadow:var(--shadow)}
+
+/* system */
+.lane{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px 26px;margin-bottom:20px;box-shadow:var(--shadow)}
+.lane h3{margin-bottom:18px}
+.flow{display:flex;align-items:stretch}
+.node{flex:1;min-width:0;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.node.key{background:var(--surface);border:1.5px solid var(--ink)}
+.node b{display:block;color:var(--heading);font-size:.98rem;margin-bottom:4px}
+.node span{display:block;color:var(--muted);font-size:.88rem;line-height:1.5}
+.arrow{flex:0 0 34px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:.72rem;gap:2px}
+.arrow svg{width:22px;height:22px}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:28px}
+.metric{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 24px;box-shadow:var(--shadow)}
+.metric b{display:block;font-family:var(--serif);font-weight:600;font-size:2.3rem;line-height:1.05;color:var(--heading);margin-bottom:8px}
+.metric span{color:var(--secondary);font-size:.95rem}
+.bullets{list-style:none;display:flex;flex-direction:column;gap:10px;max-width:78ch}
+.bullets li{position:relative;padding-left:22px;color:var(--secondary)}
+.bullets li::before{content:'';position:absolute;left:4px;top:.72em;width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.bullets strong{color:var(--heading)}
+
+/* gallery */
+.shots{display:grid;gap:16px;margin-bottom:16px}
+.shots.two-up{grid-template-columns:repeat(2,minmax(0,1fr))}
+.shots figure{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.shots img{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--img-bg)}
+.shots.portraits img{aspect-ratio:1/1}
+.shots.early img{aspect-ratio:16/10;object-fit:contain;background:#fff}
+.shots figcaption{padding:12px 16px;color:var(--muted);font-size:.92rem}
+.hard{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.hard p{color:var(--secondary);font-size:.98rem}
+.refhead{margin-top:34px;margin-bottom:2px}
+.refhead span{color:var(--muted);font-weight:400;margin-left:6px}
+.refnote{margin-bottom:14px}
+
+/* roadmap */
+.road{list-style:none;position:relative;padding-left:34px;max-width:78ch}
+.road::before{content:'';position:absolute;left:9px;top:8px;bottom:8px;width:2px;background:var(--line-strong)}
+.road li{position:relative;padding:0 0 26px}
+.road li::before{content:'';position:absolute;left:-30px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid var(--muted)}
+.road li.done::before{background:var(--ink);border-color:var(--ink)}
+.road li.now::before{background:var(--ok);border-color:var(--ok)}
+.road .when{display:block;color:var(--muted);font-size:.92rem}
+.road .what{color:var(--heading);font-weight:700}
+.road p{color:var(--secondary);margin-top:2px}
+
+/* references */
+.refs{list-style:none;counter-reset:r;display:flex;flex-direction:column;gap:12px;max-width:88ch}
+.refs li{counter-increment:r;position:relative;padding-left:38px;color:var(--secondary);font-size:.96rem}
+.refs li::before{content:counter(r);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:.8rem;font-weight:700;color:var(--muted);border:1px solid var(--line-strong)}
+.refs i{color:var(--text)}
+
+footer{max-width:1280px;margin:72px auto 0;padding:26px clamp(20px,3vw,40px) 40px;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 24px;color:var(--muted);font-size:.92rem}
+footer p{max-width:none}
+a:focus-visible,button:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:4px}
+
+@media (max-width:1100px){
+  .layout{grid-template-columns:1fr;gap:0}
+  .toc{display:none}
+}
+@media (max-width:900px){
+  .overview,.controls,.two,.hard,.shots.two-up{grid-template-columns:1fr}
+  .groups,.metrics{grid-template-columns:1fr}
+  .flow{flex-direction:column}
+  .arrow{flex:0 0 30px;transform:rotate(90deg)}
+  .arrow small{display:none}
+  .strip a.plain{display:none}
+}
+@media (max-width:600px){
+  body{font-size:1rem}
+  section{margin-top:80px}
+  h2{font-size:1.8rem}
+  .page{padding-top:36px}
+  .checks{grid-template-columns:1fr}
+  .panel,.lane,.timeline-wrap{padding:20px}
+  .facts div{grid-template-columns:1fr;gap:2px}
+  .tl div{font-size:.75rem}
+  .tl .l{display:none}.tl .s{display:inline}
+  .tag{font-size:.8rem;padding:5px 10px}
+  .tag.l{top:10px;left:10px}.tag.r{top:10px;right:10px}.tag.hint{bottom:10px}
+  th,td{padding:12px}
+  .back span{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+<script>try{if(localStorage.getItem('thesis-theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
+</head>
+<body>
+<header class="strip">
+  <div class="strip-in">
+    <a class="back" href="https://ehtiram-shukurov.github.io/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Ehtiram <span>(Ezra)</span> Shukurov</a>
+    <span class="spacer"></span>
+    <a class="plain" href="mailto:shuku010@umn.edu">Contact</a>
+    <button class="theme-btn" id="themeBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg><span>Dark</span></button>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="toc" aria-label="Contents">
+    <p>Contents</p>
+    <ol>
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#controls">What stays the same</a></li>
+      <!-- <li><a href="#gallery">Study room</a></li> -->
+      <li><a href="#design">Study design</a></li>
+      <li><a href="#system">How it is built</a></li>
+      <li><a href="#analysis">Analysis plan</a></li>
+      <li><a href="#status">Timeline</a></li>
+      <li><a href="#related">Related work</a></li>
+    </ol>
+  </nav>
+
+<main class="page">
+
+  <div class="hero">
+    <p class="kicker">MS Thesis in Computer Science, University of Minnesota</p>
+    <h1>Does a more realistic virtual evaluator cause more stress in VR?</h1>
+    <div class="byline">
+      <span class="who">Ehtiram <span>(Ezra)</span> Shukurov</span>
+      <span class="where">Advised by Prof. Victoria Interrante</span>
+      <span class="where muted">Department of Computer Science and Engineering, University of Minnesota</span>
+    </div>
+    <div class="status"><i></i>System built, waiting for IRB approval. Data collection planned for Spring 2027.</div>
+    <div class="actions">
+      <a class="btn primary" href="#design">Study design</a>
+      <a class="btn" href="#system">How it is built</a>
+      <a class="btn" href="https://ehtiram-shukurov.github.io/">Portfolio ↗</a>
+    </div>
+  </div>
+
+<!-- Hidden until final images are captured
+  <figure class="teaser">
+    <div class="compare" id="compare">
+      <img src="media/compare/eval-rocketbox.jpg" alt="Rocketbox evaluator seated at the desk">
+      <img class="top" src="media/compare/eval-metahuman.jpg" alt="MetaHuman evaluator seated at the same desk">
+      <div class="handle" aria-hidden="true"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5"/></svg></span></div>
+      <span class="tag l mh">MetaHuman</span>
+      <span class="tag r rb">Rocketbox</span>
+      <span class="tag hint" aria-hidden="true">Drag to compare</span>
+      <input type="range" min="0" max="100" value="50" aria-label="Compare the MetaHuman and Rocketbox evaluators">
+    </div>
+    <figcaption>The same moment of the same recorded performance on both evaluators, taking notes. Room, desk, clipboard and pen are identical.</figcaption>
+  </figure>
+-->
+
+
+
+  <section id="overview">
+    <h2>Overview</h2>
+    <div class="overview">
+      <div>
+        <p>You are doing mental math against the clock while someone across the table watches and takes notes. <strong>Does it matter how real that person looks?</strong> This thesis tests that in virtual reality.</p>
+        <p>Participants sit at a desk in a virtual meeting room and answer on a tablet. After a quiet untimed block, an evaluator walks in, sits down and stays for the timed block. One group gets a highly realistic MetaHuman, one gets a simpler Rocketbox avatar, and one gets nobody.</p>
+        <p>The two evaluators share the same movements, voice, room and task, so the comparison is about appearance. Stress is measured from the body and from what participants report.</p>
+      </div>
+      <dl class="facts">
+        <div><dt>Design</dt><dd>Between subjects, 3 groups</dd></div>
+        <div><dt>Task</dt><dd>MIST style mental arithmetic</dd></div>
+        <div><dt>Platform</dt><dd>Meta Quest 3, Unreal Engine 5.8</dd></div>
+        <div><dt>Measures</dt><dd>Skin conductance, heart rate, STAI-6, performance</dd></div>
+        <div><dt>Sample</dt><dd>Adults, as many as the time allows</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section id="controls">
+    <h2>What stays the same</h2>
+    <p class="lead">The comparison only means something if the two evaluators differ in appearance and nothing else. This is what the design holds fixed.</p>
+    <div class="controls">
+      <div class="panel">
+        <h3>Identical in both evaluator groups</h3>
+        <ul class="checks">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>Recorded body motion and timing</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>Voice and the two spoken lines</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>Where the evaluator looks, and when</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>Room, desk, lighting and sounds</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>Task, questions and feedback</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>Clothing style</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>Apparent age, gender and ethnicity</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>No conversation with the evaluator</li>
+        </ul>
+      </div>
+      <div class="panel accent changes">
+        <h3>What changes</h3>
+        <p class="big">The visual realism of the evaluator</p>
+        <div class="row"><span class="chip mh">MetaHuman</span><span class="muted">high realism</span></div>
+        <div class="row"><span class="chip rb">Rocketbox</span><span class="muted">conventional virtual human</span></div>
+        <div class="row"><span class="chip none">No evaluator</span><span class="muted">reference group</span></div>
+        <p class="note">A third group does the same session with no evaluator, as a reference for how stressful the task is on its own.</p>
+      </div>
+    </div>
+  </section>
+
+<!-- Hidden until final images are captured
+  <section id="gallery">
+    <h2>Inside the study room</h2>
+    <p class="lead">Captured from the Unreal project.</p>
+    <div class="shots two-up portraits">
+      <figure><img src="media/gallery/portrait-metahuman.jpg" alt="MetaHuman evaluator at the desk" loading="lazy"><figcaption><span class="chip mh">MetaHuman</span></figcaption></figure>
+      <figure><img src="media/gallery/portrait-rocketbox.jpg" alt="Rocketbox evaluator at the desk" loading="lazy"><figcaption><span class="chip rb">Rocketbox</span></figcaption></figure>
+    </div>
+    <div class="shots two-up">
+      <figure><img src="media/gallery/entrance-door.jpg" alt="The evaluator coming in through the door" loading="lazy"><figcaption>The evaluator comes in after the untimed block.</figcaption></figure>
+      <figure><img src="media/gallery/entrance-sit.jpg" alt="The evaluator walking toward the chair" loading="lazy"><figcaption>Walks to the chair and sits down.</figcaption></figure>
+      <figure><img src="media/gallery/room-tv.jpg" alt="Wall screen showing a question, a clock and accuracy" loading="lazy"><figcaption>Questions and accuracy on the wall screen.</figcaption></figure>
+      <figure><img src="media/gallery/tablet.jpg" alt="Virtual tablet with a number pad" loading="lazy"><figcaption>The number pad, touched with a fingertip.</figcaption></figure>
+    </div>
+
+    <h3 style="margin-top:36px">Where it started</h3>
+    <div class="shots two-up early">
+      <figure><img src="media/gallery/early-candidates.jpg" alt="Seven Rocketbox business avatars" loading="lazy"><figcaption>Choosing which Rocketbox avatar to compare with.</figcaption></figure>
+      <figure><img src="media/gallery/early-first.jpg" alt="First textured MetaHuman and Rocketbox avatars standing with arms out" loading="lazy"><figcaption>Early October 2026: both avatars in the room, no animation, unmatched lighting.</figcaption></figure>
+    </div>
+  </section>
+-->
+
+  <section id="design">
+    <h2>Study design</h2>
+    <p class="lead">Each participant is randomly assigned to one group, in balanced blocks. The session runs inside the headset from start to finish.</p>
+
+    <div class="groups">
+      <div class="group mh"><b>MetaHuman</b><span>High realism evaluator</span></div>
+      <div class="group rb"><b>Rocketbox</b><span>Conventional virtual human</span></div>
+      <div class="group none"><b>No evaluator</b><span>Same room and task, nobody watching</span></div>
+    </div>
+
+    <div class="timeline-wrap">
+      <h3>One session</h3>
+      <div class="tl" role="img" aria-label="Session: 3 minute baseline, questionnaire, untimed block of 4 to 8 minutes, questionnaire, evaluator enters, 8 minute timed block, questionnaire">
+        <div class="base"><span class="l">Baseline 3 min</span><span class="s">Base</span></div>
+        <div class="q"></div>
+        <div class="untimed"><span class="l">Untimed, 4 to 8 min</span><span class="s">Practice</span></div>
+        <div class="q"></div>
+        <div class="enter"></div>
+        <div class="timed"><span class="l">Timed block, 8 min, evaluator watching</span><span class="s">Timed 8 min</span></div>
+        <div class="q"></div>
+      </div>
+      <ul class="legend">
+        <li><i class="k-q"></i>STAI-6 questionnaire in the headset</li>
+        <li><i class="k-enter"></i>Evaluator walks in, sits and introduces the task (MetaHuman or Rocketbox group)</li>
+      </ul>
+    </div>
+
+    <div class="two" style="margin-bottom:40px">
+      <div class="panel">
+        <h3>The task</h3>
+        <p>Mental arithmetic in the style of the Montreal Imaging Stress Task, with addition, subtraction, multiplication and division. Difficulty follows the person across eight levels. In the timed block each question has a limit between 3 and 12 seconds that tightens after a correct answer and relaxes after a miss. The screen shows feedback and running accuracy.</p>
+      </div>
+      <div class="panel">
+        <h3>Checking the manipulation</h3>
+        <p>Participants rate how real the evaluator looked and behaved and how aware they were of it. Timed and untimed blocks are compared within each person to confirm the task itself raises stress.</p>
+      </div>
+    </div>
+
+    <h3>Measures during the session</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Measure</th><th>What it captures</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td>Skin conductance</td><td>Level and responses, from a Shimmer3 GSR+ with finger electrodes</td><td>Whole session</td></tr>
+          <tr><td>Heart rate and HRV</td><td>Optical pulse signal from the same device</td><td>Whole session</td></tr>
+          <tr><td>STAI-6</td><td>How anxious the person feels right now, six items, answered in VR</td><td>After the baseline and after each block</td></tr>
+          <tr><td>Performance</td><td>Accuracy and answer time from the event log</td><td>Both blocks</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Questionnaires after the headset</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Topic</th><th>Questionnaire</th></tr></thead>
+        <tbody>
+          <tr><td>Cybersickness</td><td>Simulator Sickness Questionnaire, 16 symptoms rated from none to severe</td></tr>
+          <tr><td>Presence</td><td>Items from the igroup Presence Questionnaire</td></tr>
+          <tr><td>Social presence</td><td>Items from the Networked Minds inventory (evaluator groups)</td></tr>
+          <tr><td>Realism</td><td>Appearance and behavior ratings, inspired by the Virtual Human Plausibility Questionnaire (evaluator groups)</td></tr>
+          <tr><td>Math anxiety</td><td>Math evaluation items from the Abbreviated Math Anxiety Scale</td></tr>
+          <tr><td>Fear of judgment</td><td>Brief Fear of Negative Evaluation, straightforward items</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="system">
+    <h2>How it is built</h2>
+    <p class="lead">I built the study system in Unreal Engine for a Meta Quest 3 over PC VR, plus a set of Python tools around it.</p>
+
+    <div class="lane">
+      <h3>Running a session</h3>
+      <div class="flow">
+        <div class="node"><b>Staff console</b><span>Python. Starts a session by participant number and shows the live log.</span></div>
+        <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg><small>OSC</small></div>
+        <div class="node key"><b>Study app on Quest 3</b><span>Session controller, task engine, touch keypad, in headset STAI-6, the group's evaluator.</span></div>
+        <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg></div>
+        <div class="node"><b>Event log</b><span>Every step, question, answer, response time and questionnaire item, with timestamps.</span></div>
+        <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg></div>
+        <div class="node"><b>Log parser</b><span>Python, with tests. Turns each session into clean tables for analysis.</span></div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <h3>Making one performance work on two avatars</h3>
+      <div class="flow">
+        <div class="node"><b>Recorded performance</b><span>Body motion from video, solved offline, plus two short spoken lines.</span></div>
+        <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg></div>
+        <div class="node key"><b>MetaHuman sequence</b><span>Entrance, intro, 8 minutes of watching and writing, closing line.</span></div>
+        <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg></div>
+        <div class="node"><b>Retarget to Rocketbox</b><span>Same motion on a different skeleton.</span></div>
+        <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg></div>
+        <div class="node"><b>Scripted fit passes</b><span>Python editor scripts fix desk contact, eye aim and the pen on the paper.</span></div>
+      </div>
+    </div>
+
+    <div class="lane">
+      <h3>Running it in the headset</h3>
+      <ul class="bullets">
+        <li><strong>PC VR.</strong> Unreal Engine runs on the PC and streams to the Quest 3 over Quest Link, using OpenXR, DirectX 12 and DLSS upscaling.</li>
+        <li><strong>Hand tracking.</strong> Participants answer by touching the virtual keypad with a fingertip, with no controllers.</li>
+        <li><strong>Cheaper lighting.</strong> Profiling showed shadows taking most of each frame, so the room lights were made static and the face lights cast no shadows.</li>
+        <li><strong>One avatar at a time.</strong> Only the evaluator for the participant's group is kept in the scene during a session.</li>
+        <li><strong>A checked task engine.</strong> The difficulty and time limit rules are tested against a separate Python version, with automated tests.</li>
+      </ul>
+    </div>
+
+    <h3 style="margin-top:44px">What was difficult</h3>
+    <div class="hard">
+      <div class="panel"><h3>Two different bodies</h3><p>The avatars have different skeletons and proportions. After retargeting, hands, pen and head had to be fitted again so both do the same thing in the same place.</p></div>
+      <div class="panel"><h3>Contact with the desk</h3><p>Recorded motion does not know where the table is. Hands, forearms and the pen had to stay on the clipboard and desk, not pass through them.</p></div>
+      <div class="panel"><h3>Looking at the right thing</h3><p>Recorded head and eye movements often missed their targets in the virtual room, so gaze was aimed again at the participant, the screen and the paper.</p></div>
+      <div class="panel"><h3>Eight minutes from short takes</h3><p>The seated performance is assembled from separate recordings, which had to join without jumps or obvious repetition.</p></div>
+      <div class="panel"><h3>Matching the look</h3><p>The Rocketbox avatar had no beard and different clothes, so its textures were repainted and revised several times.</p></div>
+      <div class="panel"><h3>Failures that only show in a session</h3><p>Test runs found cases that would have stalled a participant, such as the questions running out, and these were fixed.</p></div>
+    </div>
+  </section>
+
+  <section id="analysis">
+    <h2>Analysis plan</h2>
+    <p class="lead">Planned before any data is collected, so the results cannot shape the analysis.</p>
+    <ul class="bullets">
+      <li><strong>Baseline correction.</strong> Physiological measures are compared as change from each person's own 3 minute baseline.</li>
+      <li><strong>Group comparisons.</strong> t-tests or Mann-Whitney U tests depending on the data, and regression with the exit survey measures as covariates.</li>
+      <li><strong>Skin conductance responses.</strong> Response counts are modeled with a negative binomial model.</li>
+      <li><strong>Manipulation check.</strong> Timed versus untimed blocks within each person, to confirm the task raises stress at all.</li>
+      <li><strong>Reading a null result.</strong> A non-significant result is reported as no difference detected, not as no difference. A Bayesian equivalence analysis is possible.</li>
+    </ul>
+  </section>
+
+  <section id="status">
+    <h2>Timeline</h2>
+    <p class="lead">The study system is built. The protocol is under IRB review.</p>
+    <ol class="road">
+      <li class="done"><span class="when">February to April 2026</span><span class="what">Literature and research question</span><p>From early ideas about embodiment and motion toward stress under social evaluation.</p></li>
+      <li class="done"><span class="when">May to September 2026</span><span class="what">Study design</span><p>Settled on visual realism, with motion and voice held constant across both evaluators.</p></li>
+      <li class="done"><span class="when">October 2026</span><span class="what">Task design, protocol submission, system build</span><p>Adaptive arithmetic task, answer pad, session control and logging.</p></li>
+      <li class="done"><span class="when">November 2026</span><span class="what">Evaluators, performance and room</span><p>One recorded performance on both avatars, with gaze, sound and the displays.</p></li>
+      <li class="now"><span class="when">Now</span><span class="what">Waiting for IRB approval</span></li>
+      <li><span class="when">After approval, to February 2027</span><span class="what">Data collection</span></li>
+      <li><span class="when">Spring 2027</span><span class="what">Analysis and thesis defense</span></li>
+    </ol>
+  </section>
+
+  <section id="related">
+    <h2>Related work</h2>
+    <p class="lead">The 39 papers the thesis builds on. Earlier comparisons of realistic and simpler virtual humans found mixed effects on stress, which is the gap this study addresses.</p>
+    <h3 class="refhead">Stress under evaluation <span>3</span></h3>
+    <p class="muted refnote">Tasks that are hard to control and that others can judge produce the strongest stress responses.</p>
+    <ol class="refs" style="counter-reset:r 0">
+        <li>Dickerson &amp; Kemeny (2004). Acute Stressors and Cortisol Responses: A Theoretical Integration and Synthesis of Laboratory Research. <i>Psychological Bulletin</i>. <a href="https://doi.org/10.1037/0033-2909.130.3.355">doi</a></li>
+        <li>Kirschbaum, Pirke &amp; Hellhammer (1993). The 'Trier Social Stress Test': a tool for investigating psychobiological stress responses in a laboratory setting. <i>Neuropsychobiology</i>. <a href="https://doi.org/10.1159/000119004">doi</a></li>
+        <li>Dedovic et al. (2005). The Montreal Imaging Stress Task: using functional imaging to investigate the effects of perceiving and processing psychosocial stress in the human brain. <i>Journal of Psychiatry and Neuroscience</i>. <a href="https://www.jpn.ca/content/30/5/319.full.pdf">pdf</a></li>
+    </ol>
+    <h3 class="refhead">Stress tasks in virtual reality <span>7</span></h3>
+    <p class="muted refnote">Social and arithmetic stressors rebuilt in VR, and how their effects compare.</p>
+    <ol class="refs" style="counter-reset:r 3">
+        <li>Shiban et al. (2016). Trier Social Stress Test in vivo and in virtual reality: Dissociation of response domains. <i>International Journal of Psychophysiology</i>. <a href="https://doi.org/10.1016/j.ijpsycho.2016.10.008">doi</a></li>
+        <li>Zimmer, Wu &amp; Domes (2019). Same same but different? Replicating the real surroundings in a virtual trier social stress test (TSST-VR) does not enhance presence or the psychophysiological stress response. <i>Physiology &amp; Behavior</i>. <a href="https://doi.org/10.1016/j.physbeh.2019.112690">doi</a></li>
+        <li>Linnig et al. (2025). Open TSST VR: Psychobiological reactions to an open version of the Trier Social Stress Test in virtual reality. <i>Behavior Research Methods</i>. <a href="https://doi.org/10.3758/s13428-025-02662-x">doi</a></li>
+        <li>Rodrigues et al. (2021). IMVEST, an immersive multimodal virtual environment stress test for humans that adjusts challenge to individual's performance. <i>Neurobiology of Stress</i>. <a href="https://doi.org/10.1016/j.ynstr.2021.100382">doi</a></li>
+        <li>Roßkopf et al. (2026). Aurally impressed, yet not more stressed: On the relationship between audiovisual realism, social anxiety, and presence in a virtual social stress scenario. <i>PLOS One</i>. <a href="https://doi.org/10.1371/journal.pone.0345565">doi</a></li>
+        <li>Dammen et al. (2022). Evoking stress reactivity in virtual reality: A systematic review and meta-analysis. <i>Neuroscience &amp; Biobehavioral Reviews</i>. <a href="https://doi.org/10.1016/j.neubiorev.2022.104709">doi</a></li>
+        <li>Sikora et al. (2026). A systematic scoping review identifying effective virtual reality stress tasks inducing physiological reactivity for future wearables validation. <i>Behavior Research Methods</i>. <a href="https://doi.org/10.3758/s13428-026-03161-3">doi</a></li>
+    </ol>
+    <h3 class="refhead">Does appearance change stress? <span>7</span></h3>
+    <p class="muted refnote">The closest work. Results do not agree, and tasks, characters and measures differ.</p>
+    <ol class="refs" style="counter-reset:r 10">
+        <li>Kwon et al. (2009). A study of visual perception social anxiety and virtual realism. <i>Proceedings of the 25th Spring Conference on Computer Graphics</i>. <a href="https://doi.org/10.1145/1980462.1980495">doi</a></li>
+        <li>Kwon, Powell &amp; Chalmers (2013). How level of realism influences anxiety in virtual reality environments for a job interview. <i>International Journal of Human-Computer Studies</i>. <a href="https://doi.org/10.1016/j.ijhcs.2013.07.003">doi</a></li>
+        <li>Girondini et al. (2023). Speaking in front of cartoon avatars: A behavioral and psychophysiological study on how audience design impacts on public speaking anxiety in virtual environments. <i>International Journal of Human-Computer Studies</i>. <a href="https://doi.org/10.1016/j.ijhcs.2023.103106">doi</a></li>
+        <li>Zhang et al. (2026). Designing for Comfort in VR Public Speaking: How Avatar Realism and Natural Environments Shape User Experience and Stress Responses. <i>Behavioral Sciences</i>. <a href="https://doi.org/10.3390/bs16050800">doi</a></li>
+        <li>Luo et al. (2024). Using a virtual reality interview simulator to explore factors influencing people’s behavior. <i>Virtual Reality</i>. <a href="https://doi.org/10.1007/s10055-023-00934-5">doi</a></li>
+        <li>Volonte et al. (2016). Effects of Virtual Human Appearance Fidelity on Emotion Contagion in Affective Inter-Personal Simulations. <i>IEEE Transactions on Visualization and Computer Graphics</i>. <a href="https://doi.org/10.1109/TVCG.2016.2518158">doi</a></li>
+        <li>Lugrin et al. (2015). Influence of avatar realism on stressful situation in VR. <i>2015 IEEE Virtual Reality (VR)</i>. <a href="https://doi.org/10.1109/VR.2015.7223378">doi</a></li>
+    </ol>
+    <h3 class="refhead">Being watched by a virtual character <span>5</span></h3>
+    <p class="muted refnote">How an observer behaves, and simply being there, can both matter.</p>
+    <ol class="refs" style="counter-reset:r 17">
+        <li>Sterna et al. (2024). Like a human: The social facilitation/inhibition effect in presence of a virtual observer depends on arousal. <i>Virtual Reality</i>. <a href="https://doi.org/10.1007/s10055-024-00972-7">doi</a></li>
+        <li>Haucke, Golde &amp; Heinzel (2025). Development and validation of the socio-evaluative N-back task to investigate the impact of acute social stress on working memory. <i>Scientific Reports</i>. <a href="https://doi.org/10.1038/s41598-025-22611-0">doi</a></li>
+        <li>Strojny et al. (2020). Moderators of Social Facilitation Effect in Virtual Reality: Co-presence and Realism of Virtual Agents. <i>Frontiers in Psychology</i>. <a href="https://doi.org/10.3389/fpsyg.2020.01252">doi</a></li>
+        <li>Chittaro &amp; Serafini (2023). Desktop virtual reality as an exposure method for test anxiety: quantitative and qualitative feasibility study. <i>Multimedia Tools and Applications</i>. <a href="https://doi.org/10.1007/s11042-023-16917-2">doi</a></li>
+        <li>Girondini et al. (2024). Decoupling the role of verbal and non-verbal audience behavior on public speaking anxiety in virtual reality using behavioral and psychological measures. <i>Frontiers in Virtual Reality</i>. <a href="https://doi.org/10.3389/frvir.2024.1347102">doi</a></li>
+    </ol>
+    <h3 class="refhead">Realism of virtual humans <span>9</span></h3>
+    <p class="muted refnote">Appearance and behavior interact, which is why behavior is held constant here.</p>
+    <ol class="refs" style="counter-reset:r 22">
+        <li>Mori, MacDorman &amp; Kageki (2012). The uncanny valley (translation of the 1970 essay). <i>IEEE Robotics &amp; Automation Magazine</i>. <a href="https://doi.org/10.1109/MRA.2012.2192811">doi</a></li>
+        <li>MacDorman &amp; Chattopadhyay (2016). Reducing consistency in human realism increases the uncanny valley effect; increasing category uncertainty does not. <i>Cognition</i>. <a href="https://doi.org/10.1016/j.cognition.2015.09.019">doi</a></li>
+        <li>Higgins et al. (2021). Ascending from the valley: Can state-of-the-art photorealism avoid the uncanny? <i>ACM Symposium on Applied Perception 2021</i>. <a href="https://doi.org/10.1145/3474451.3476242">doi</a></li>
+        <li>Amadou, Haque &amp; Yumak (2023). Effect of Appearance and Animation Realism on the Perception of Emotionally Expressive Virtual Humans. <i>Proceedings of the 23rd ACM International Conference on Intelligent Virtual Agents</i>. <a href="https://doi.org/10.1145/3570945.3607307">doi</a></li>
+        <li>Garau et al. (2003). The impact of avatar realism and eye gaze control on perceived quality of communication in a shared immersive virtual environment. <i>Proceedings of the SIGCHI Conference on Human Factors in Computing Systems</i>. <a href="https://doi.org/10.1145/642611.642703">doi</a></li>
+        <li>Bailenson et al. (2005). The Independent and Interactive Effects of Embodied-Agent Appearance and Behavior on Self-Report, Cognitive, and Behavioral Markers of Copresence in Immersive Virtual Environments. <i>Presence: Teleoperators and Virtual Environments</i>. <a href="https://doi.org/10.1162/105474605774785235">doi</a></li>
+        <li>Sterna et al. (2024). How Behavioral, Photographic, and Interactional Realism Influence the Sense of Co-Presence in VR. An Investigation with Psychophysiological Measurement. <i>International Journal of Human–Computer Interaction</i>. <a href="https://doi.org/10.1080/10447318.2023.2285641">doi</a></li>
+        <li>Slater (2009). Place illusion and plausibility can lead to realistic behaviour in immersive virtual environments. <i>Philosophical Transactions of the Royal Society B: Biological Sciences</i>. <a href="https://doi.org/10.1098/rstb.2009.0138">doi</a></li>
+        <li>Gonzalez-Franco et al. (2020). The Rocketbox Library and the Utility of Freely Available Rigged Avatars. <i>Frontiers in Virtual Reality</i>. <a href="https://doi.org/10.3389/frvir.2020.561558">doi</a></li>
+    </ol>
+    <h3 class="refhead">Measures <span>8</span></h3>
+    <p class="muted refnote">The questionnaires and recording guidance the study uses.</p>
+    <ol class="refs" style="counter-reset:r 31">
+        <li>Marteau &amp; Bekker (1992). The development of a six‐item short‐form of the state scale of the Spielberger State—Trait Anxiety Inventory (STAI). <i>British Journal of Clinical Psychology</i>. <a href="https://doi.org/10.1111/j.2044-8260.1992.tb00997.x">doi</a></li>
+        <li>Hopko et al. (2003). The Abbreviated Math Anxiety Scale (AMAS) Construction, Validity, and Reliability. <i>Assessment</i>. <a href="https://doi.org/10.1177/1073191103010002008">doi</a></li>
+        <li>Baldanzini et al. (2025). Psychometric properties of the brief fear of negative evaluation scale—Straightforward items. <i>Frontiers in Psychology</i>. <a href="https://doi.org/10.3389/fpsyg.2025.1572752">doi</a></li>
+        <li>Schubert, Friedmann &amp; Regenbrecht (2001). The Experience of Presence: Factor Analytic Insights. <i>Presence: Teleoperators and Virtual Environments</i>. <a href="https://doi.org/10.1162/105474601300343603">doi</a></li>
+        <li>Biocca, Harms &amp; Gregg (2001). The networked minds measure of social presence: pilot test of the factor structure and concurrent validity. <i>4th International Workshop on Presence</i>. </li>
+        <li>Mal et al. (2022). Virtual Human Coherence and Plausibility – Towards a Validated Scale. <i>2022 IEEE Conference on Virtual Reality and 3D User Interfaces Abstracts and Workshops (VRW)</i>. <a href="https://doi.org/10.1109/VRW55335.2022.00245">doi</a></li>
+        <li>Kennedy et al. (1993). Simulator Sickness Questionnaire: An Enhanced Method for Quantifying Simulator Sickness. <i>The International Journal of Aviation Psychology</i>. <a href="https://doi.org/10.1207/s15327108ijap0303_3">doi</a></li>
+        <li>Society for Psychophysiological Research committee on electrodermal measures (2012). Publication recommendations for electrodermal measurements. <i>Psychophysiology</i>. <a href="https://doi.org/10.1111/j.1469-8986.2012.01384.x">doi</a></li>
+    </ol>
+  </section>
+
+</main>
+</div>
+
+<footer>
+  <p>Ehtiram (Ezra) Shukurov, University of Minnesota. <a href="https://ehtiram-shukurov.github.io/">Portfolio</a></p>
+  <p>MetaHuman is a product of Epic Games. Rocketbox avatars by Microsoft.</p>
+</footer>
+
+<script>
+// Comparison slider
+(function () {
+  var box = document.getElementById('compare');
+  if (!box) return;
+  var input = box.querySelector('input');
+  input.addEventListener('input', function () {
+    box.style.setProperty('--pos', input.value + '%');
+    box.classList.add('touched');
+  });
+})();
+
+// Highlight the section in view
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var update = function () {
+    var current = links[0];
+    links.forEach(function (a) {
+      var s = document.querySelector(a.getAttribute('href'));
+      if (s && s.getBoundingClientRect().top <= 160) current = a;
+    });
+    links.forEach(function (a) { a.classList.toggle('active', a === current); });
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+})();
+
+// Light and dark
+(function () {
+  var btn = document.getElementById('themeBtn');
+  var root = document.documentElement;
+  var sync = function () {
+    var dark = root.dataset.theme === 'dark';
+    btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+    btn.querySelector('span').textContent = dark ? 'Light' : 'Dark';
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', dark ? '#16191f' : '#f4f5f7');
+  };
+  btn.addEventListener('click', function () {
+    if (root.dataset.theme === 'dark') { delete root.dataset.theme; } else { root.dataset.theme = 'dark'; }
+    try { localStorage.setItem('thesis-theme', root.dataset.theme === 'dark' ? 'dark' : 'light'); } catch (e) {}
+    sync();
+  });
+  sync();
+})();
+</script>
+</body>
+</html>
